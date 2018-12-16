@@ -1,2 +1,5 @@
 FEU/invokerTest.py
 FEU/__pycache__
+FEU/images/*
+FEU/build.sh
+*/test.py
