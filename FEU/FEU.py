@@ -11,9 +11,9 @@ from func import f
 
 with open('./boot', 'r') as b:
     lines = b.readlines()
-    IP = lines[0]
-    Port = int(lines[1])
-    Pretext = lines[2]
+    IP = lines[0].split('\n')[0]
+    Port = int((lines[1]).split('\n')[0])
+    Pretext = lines[2].split('\n')[0]
 
 core = Core(f, Port, IP, Pretext)
 core.join()

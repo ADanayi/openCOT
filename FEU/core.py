@@ -28,6 +28,8 @@ class Core:
                 resp = cc.packet('FIN', b'')
             elif req[0] == 'EXE':
                 resp = cc.packet('RET', self.exec(req[1]))
+            else:
+                resp = cc.packet('NSU', b'')
             
             con.send(resp)
             con.close()
