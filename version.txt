@@ -1,0 +1,1 @@
+This is the first version of openCOT, the smart and bust tolerant Cloud of Things for serverless computing.
