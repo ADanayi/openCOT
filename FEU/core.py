@@ -45,7 +45,7 @@ class Core:
         self.pr("EXEC::function retuned")
         if not isinstance(ret, dict):
             self.pr("EXEC::Warning. Returned value is not a dictionary")
-            ret = {}
+            ret = -1
         return cc.dict2Bytes(ret)
     
     def isAlive(self):
