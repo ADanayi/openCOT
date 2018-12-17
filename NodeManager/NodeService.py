@@ -9,9 +9,10 @@ Created on Sun Dec 16 22:36:10 2018
 import time
 #import zmq
 import docker
-#import socket
+import socket
 import FEUService
 import NodeFER
+from contextlib import closing
 
 import sys
 sys.path.append('./../FEU')
@@ -33,7 +34,7 @@ class Node:
         self.__imageIDCtrs = {}
         
         self.__poolAllowed = True
-        self.__sleepTime = 3
+        self.__sleepTime = 0.1
         self.pr("Initialized node")
         
     def pr(self, txt):
@@ -41,11 +42,17 @@ class Node:
         
     #########################% Node: Allocation and scaling functions
     def allocateTable(self, table, firstFlush=True, allContainers=True):
+        self.pr("Allocating table")
         if firstFlush:
             self.flushNode(allContainers)
         for imageName in table.keys():
-            name = self._getNewFEUName()
-            self.newFEU(name, imageName, )
+            N = table[imageName][0]
+            P = table[imageName][1]
+            for _ in range(N):
+                name = self._getNewFEUName(imageName)
+                port = self._getNewFreePortNumber() 
+                self.newFEU(name, imageName, port, P)
+        self.pr("[Done]")
 
             ######
     def _imageIDCtr_getInitVal(self, imageName):
@@ -61,9 +68,15 @@ class Node:
             ######
     def _getNewFEUName(self, imageName):
         imageIDCtr = self._imageIDCtr_iterate(imageName)
-        name = 'FEU::{}.{}'.format(imageName, imageIDCtr)
+        name = 'FEU-{}-{}'.format(imageName, imageIDCtr)
         return name
-        
+    
+            ######
+    def _getNewFreePortNumber(self):
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('', 0))
+            return s.getsockname()[1]
 
     #########################% Node: Task scheduling functions
     def addNewFER(self, fer):
@@ -90,9 +103,9 @@ class Node:
         self._aFERs.append(fer)
         return feu
     
-    #########################% Node: FEU management
+    #########################% Node: FEUs management
     def flushNode(self, allContainers=True):
-        self.pr('Deleting all FEUs')
+        self.pr('Node Flushing...')
         if allContainers:
             List = self._listCnts()
             for cnt in List:
@@ -149,8 +162,10 @@ class Node:
 
 #%%
 node = Node()
-node.flushNode()
-feu = node.newFEU('feu1', 'echofuncbusy', 8000)
+
+Table = {'echofuncbusy':(5, 0.1), 'echofunc':(2, 0.25)}
+node.allocateTable(Table)
+
 #%%
 x = {'name':'abolfazl', 'fname':'danayi', 'age':24}
 m = {'USERID':'ADanayi'}
