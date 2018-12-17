@@ -44,8 +44,7 @@ class Node:
         if firstFlush:
             self.flushNode(allContainers)
         for imageName in table.keys():
-            
-            
+            name = self._getNewFEUName()
             self.newFEU(name, imageName, )
 
             ######
