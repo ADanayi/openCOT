@@ -19,7 +19,7 @@ sys.path.append('./../FEU')
 #import common_convs as cc
 
 
-class Node:
+class NodeService:
     def __init__(self, pretext='\tNode'):
         self._client = docker.from_env()
         self._client.containers.prune()
@@ -39,7 +39,9 @@ class Node:
         
     def pr(self, txt):
         print("{}::{}".format(self.pretext, txt))
-        
+    
+    #########################% Node: Connection functions
+    
     #########################% Node: Allocation and scaling functions
     def allocateTable(self, table, firstFlush=True, allContainers=True):
         self.pr("Allocating table")
@@ -159,19 +161,3 @@ class Node:
         self.pr('Deleting all FEUs')
         for cnt in self._listCnts():
             self._delCnt(cnt, force)
-
-#%%
-node = Node()
-
-Table = {'echofuncbusy':(5, 0.1), 'echofunc':(2, 0.25)}
-node.allocateTable(Table)
-
-#%%
-x = {'name':'abolfazl', 'fname':'danayi', 'age':24}
-m = {'USERID':'ADanayi'}
-fer = NodeFER.NodeFER('11223344', 'echofuncbusy', x, m)
-node.addNewFER(fer)
-node.schedFER(0)
-
-#%%
-node.flushNode()
