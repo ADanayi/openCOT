@@ -25,14 +25,10 @@ class NodeService:
         self.pretext = pretext
         self.cpu_period = int(10000)
         
-        self._FEUs = []
-        self._freeFEUs = {}
-        self._uaFERs = []
-        self._aFERs = []
-        
+        self._FEUs = {}
+    
         self.__imageIDCtrs = {}
         
-        self.__poolAllowed = True
         self.__sleepTime = 0.1
         self.pr("Initialized node")
         
@@ -79,30 +75,18 @@ class NodeService:
             s.bind(('', 0))
             return s.getsockname()[1]
 
-    #########################% Node: Task scheduling functions
-    def addNewFER(self, fer):
-        self._uaFERs.append(fer)
-        
-    def _findFEU(self, fer, remFromFrees=True):
-        fFEUs = self._freeFEUs[fer.imageName]
-        if len(fFEUs) == 0:
-            return None
-        else:
-            ret = fFEUs[0]
-            if remFromFrees:
-                del fFEUs[0]
-            return ret
-        
-    def schedFER(self, lid): # lid is the linear ID in the _uaFERs list
-        fer = self._uaFERs[lid]
-        feu = self._findFEU(fer)
-        if feu is None:
-            return None
-        del self._uaFERs[lid]
+    #########################% Node: Task scheduling functions        
+    def findAvailableFEU(self, imageName):
+        fFEUs = self._FEUs[imageName]
+        for feu in fFEUs:
+            if not feu.isInvoked():
+                return feu
+        return None
+                
+    def schedFERonFEU(self, fer, feu):
         ret = feu.exe(fer.x, fer.m)
         fer.setRetObject(ret)
-        self._aFERs.append(fer)
-        return feu
+        return ret
     
     #########################% Node: FEUs management
     def flushNode(self, allContainers=True):
@@ -117,20 +101,16 @@ class NodeService:
                 while feu.isBusy():
                     time.sleep(0.001)
                 feu.fin()
-        self._FEUs = []
-        self._freeFEUs = {}
-        self._uaFERs = []
-        self._aFERs = []
+        self._FEUs = {}
             
     def newFEU(self, name, imageName, port, P=0.1, iport=2020):
         self.pr('Adding new FEU={} with f={}, P={}'.format(name, imageName, P))
         cnt = self._newCnt(name, imageName, port, P, iport)
-        feu = FEUService.FEUService(cnt, imageName, port, P)
+        feu = FEUService.FEUService(name, cnt, imageName, port, P)
         
-        if not imageName in self._freeFEUs.keys():
-            self._freeFEUs[imageName] = []
-        self._freeFEUs[imageName].append(feu)
-        self._FEUs.append(feu)
+        if not imageName in self._FEUs.keys():
+            self._FEUs[imageName] = []
+        self._FEUs[imageName].append(feu)
         
         time.sleep(self.__sleepTime)
         self.pr('[FEU Added]'.format(name, imageName, P))

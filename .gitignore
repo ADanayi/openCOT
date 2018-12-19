@@ -3,3 +3,5 @@ FEU/invokerTest.py
 FEU/images/*
 FEU/build.sh
 */test.py
+Controller/.fuse_*
+

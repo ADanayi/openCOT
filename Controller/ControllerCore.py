@@ -11,6 +11,9 @@ import multiprocessing as mp
 import Gate
 import AutoScaler
 
+import sys
+sys.path.append('./../Node')
+
 def pp(txt):
     print(txt, end='')
     
@@ -34,7 +37,7 @@ class ControllerCore:
             q_port = self._portsTable[imageName][0]
             qPrime_port = self._portsTable[imageName][1]
             print('\t{}: ({}, {})'.format(imageName, q_port, qPrime_port))
-            self.gates['imageName'] = Gate.Gate(q_port, qPrime_port, imageName)
+            self.gates[imageName] = Gate.Gate(q_port, qPrime_port, imageName)
         print('Created all gates.')
         
         pr('Starting auto-scaling servers: ')
@@ -64,8 +67,8 @@ class ControllerCore:
         self._portsTable = {}
         for l in lines:
             ll = l.split('\n')[0]
-            ls = ll.split('\:')
-            if len(ls) > 2:
+            ls = ll.split(':')
+            if len(ls) != 0:
                 self._portsTable[ls[0]] = (int(ls[1]), int(ls[2]))
                 
         self._asPortsTable = {}
@@ -144,3 +147,16 @@ class ControllerCore:
 #%%
 if __name__ == '__main__':
     cont = ControllerCore(4041, 4040)
+    
+#%%
+if __name__ == '__main__':
+    ctr = 0
+    while True:
+        fname = 'echofuncbusy'
+        x = input('Please enter the x: ')
+        m = {'User':'Abolfazl'}
+        
+        for i in range(10):
+            ctr += 1
+            fer = {'id':ctr, 'x':x, 'm':m}
+            cont.FER_push(fname, fer)
