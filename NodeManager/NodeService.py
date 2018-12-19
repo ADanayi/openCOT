@@ -11,7 +11,6 @@ import time
 import docker
 import socket
 import FEUService
-import NodeFER
 from contextlib import closing
 
 import sys

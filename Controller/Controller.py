@@ -18,15 +18,14 @@ def pr(txt):
     print('[{}]'.format(txt))
     
 class Controller:
-    def __init__(self, sPort, asPort, clerkPort='4040'):
+    def __init__(self, sPort, clerkPort='4040', initPath=''):
         print('Starting the Controller')
         
         self._port_clerk = clerkPort
         self._sPort = sPort
-        self._asPort = asPort
         
-        pp('Loading ports table: ')
-        self._portsTable = self._loadPortsTable()
+        pp('Loading initial configurations...')
+        self._loadInits(initPath)
         pr('Done')
         
         print('Creating Gates: ')
@@ -38,34 +37,73 @@ class Controller:
             self.gates['imageName'] = Gate.Gate(q_port, qPrime_port, imageName)
         print('Created all gates.')
         
-        pp('Starting auto-scaling servers')
-        self.autoScaler = AutoScaler.AutoScaler(sPort, asPort)
+        pr('Starting auto-scaling servers: ')
+        self.autoScaler = AutoScaler.AutoScaler(self._sPort, self._asPortsTable)
         pr('done')
         
-        pp('Starting Clerk Server: ')
+        pp('Starting Clerk server: ')
         self.proc_clerk = mp.Process(target=self._wrk_clerkServer, daemon=True)
         self.proc_clerk.start()
         pr('done')
-                    
+        
+        pp('Initial scaling...')
+        self.autoScaler.setNewAutoScaling(self._initialASTable)
+        pr('done')
+                  
+        
+    def _loadInits(self, path=''):
+        with open('init_clusters.oct', 'r') as file:
+            lines = file.readlines()
+        clustersInfo = {}
+        for l in lines:
+            ll = l.split('\n')[0]
+            ls = ll.split(':')            
+            if len(ls) > 2:
+                clustersInfo[ls[0]] = {'NodesNumer':int(ls[1]), 'ASPort':int(ls[2])}
+        with open('init_Ports.oct', 'r') as file:
+            lines = file.readlines()
+        self._portsTable = {}
+        for l in lines:
+            ll = l.split('\n')[0]
+            ls = ll.split('\:')
+            if len(ls) > 2:
+                self._portsTable[ls[0]] = (int(ls[1]), int(ls[2]))
+                
+        self._asPortsTable = {}
+        for cluster in clustersInfo.keys():
+            self._asPortsTable[cluster] = clustersInfo[cluster]['ASPort']
+            
+        self._clustersInfo = clustersInfo
+        
+        with open('init_ASTable.oct', 'r') as file:
+            lines = file.readlines()
+        self._initialASTable = {}
+        for l in lines:
+            ll = l.split('\n')[0]
+            if len(ll) == 0:
+                continue
+            ls = ll.split(':')            
+            cluster = ls[0]
+            N = int(ls[1])
+            _Table = ls[2]
+            Table = {}
+            #{'echofuncbusy':(5, 0.1), 'echofunc':(2, 0.25)}
+            tt = _Table.split(';')
+            for t in tt:
+                if len(t) == 0:
+                    continue
+                a = t.split(',')
+                Table[a[0]] = (int(a[1]), float(a[2]))
+                
+            if not cluster in self._initialASTable.keys():
+                self._initialASTable[cluster] = []
+            self._initialASTable[cluster].append((N, Table))
+                
     ######################### AutoScaler
-    ######
-    def _loadASTable(self):
-        Table = {
-                    'cluster1': {'echofuncbusy':(4, 0.1), 'echofunc':(2, 0.25)},
-                    'cluster2': {'echofuncbusy':(1, 0.1), 'echofunc':(3, 0.25)}
-                }
-        ret = [Table]
-        return ret
-    
-    def _loadClustersTable(self):
-        pass
     
     ######################### Ports Tables
     ######
-    def _loadPortsTable(self):
-        ret = {'echofunc':(8000, 9000), 'echofuncbusy':(8001, 9001)}
-        return ret
-    
+    ######    
     def _getPortsTable(self):
         return self._portsTable
     
@@ -86,10 +124,10 @@ class Controller:
         msg = req['msg']
         if msg == 'chk':
             ret = {'msg':'OK'}
-        elif msg == 'ports?':
-            ret = {'msg':'ports', 'ports':self._getPortsTable()}
-        elif msg == 'asPorts?':
-            ret = {'msg':'asPorts', 'ports':(self._sPort, self._asPort)}
+        elif msg == 'portsTable?':
+            ret = {'msg':'portsTable', 'portsTable':self._getPortsTable()}
+        elif msg == 'asPortsTable?':
+            ret = {'msg':'asPortsTable', 'sPort':self._sPort, 'asPortsTable':self._asPortsTable}
         else:
             ret = {'msg':'ERR'}
         return ret
@@ -97,4 +135,4 @@ class Controller:
 
 #%%
 if __name__ == '__main__':
-    cont = Controller(4030, 4031, 4040)
+    cont = Controller(4041, 4040)
