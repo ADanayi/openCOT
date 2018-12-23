@@ -119,6 +119,11 @@ class ControllerCore:
         return self._portsTable
     
     
+    ######################### Functions and Registery
+    def __getFunc(self, fname):
+        
+    
+    
     ######################### Clerk Server
     def _wrk_clerkServer(self):
         context = zmq.Context()
@@ -139,6 +144,8 @@ class ControllerCore:
             ret = {'msg':'portsTable', 'portsTable':self._getPortsTable()}
         elif msg == 'asPortsTable?':
             ret = {'msg':'asPortsTable', 'sPort':self._sPort, 'asPortsTable':self._asPortsTable}
+        elif msg== 'getFunc':
+            ret = self.__getFunc(req['func'])
         else:
             ret = {'msg':'ERR'}
         return ret

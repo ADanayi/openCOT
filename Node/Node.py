@@ -12,6 +12,10 @@ import threading as thd
 import NodeFER
 import time
 
+import sys
+sys.path.append('Deployer/')
+import Deployer
+
 class Node:
     def __init__(self, cluster, nid, controllerIP, controllerClerkPort=4040, pretext='Node'):
         self._nid = nid
@@ -77,6 +81,10 @@ class Node:
             self._icIndex = iAS['icIndex']
             
         return True
+    
+    ######################################## Function Deployment
+    def __deploy_Function(self, req):
+        pass
     
     ######################################## AS
     def allocateTable(self, table):
@@ -197,6 +205,11 @@ class Node:
         self.pr('Agent@{}: Finishing...'.format(imageName))
                 
     ######################################## Clerk
+    def _req_clerk_function(self, fname):
+        ret = self.__req_clerk({'msg':'function?', 'function':fname})
+        if ret['msg'] != 'function.':
+            return None
+    
     def _req_clerk_asPorts(self):
         ret = self.__req_clerk({'msg':'asPortsTable?'})
         if ret['msg'] != 'asPortsTable':
