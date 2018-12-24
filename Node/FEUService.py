@@ -8,7 +8,7 @@ Created on Mon Dec 17 09:33:48 2018
 
 from multiprocessing.pool import ThreadPool
 import sys
-sys.path.append('./../FEU')
+sys.path.append('./Base')
 import common_convs as cc
 import socket
 

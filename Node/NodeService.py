@@ -14,9 +14,7 @@ import FEUService
 from contextlib import closing
 
 import sys
-sys.path.append('./../FEU')
-#import common_convs as cc
-
+sys.path.append('./../CC')
 
 class NodeService:
     def __init__(self, pretext='\tNode'):

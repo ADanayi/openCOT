@@ -318,6 +318,3 @@ class Node:
         self.pr("\t\tWaiting for response")
         resp = socket.recv_json()
         return resp
-
-#%%
-node = Node('cluster1', 0, '127.0.0.1', 4040)
