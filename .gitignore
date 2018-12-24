@@ -1,8 +1,7 @@
 FEU/invokerTest.py
 */__pycache__
 */*/__pycache__
-FEU/images/*
-FEU/build.sh
 */test.py
 Controller/.fuse_*
+/Node/ImagesBuild/*
 

@@ -11,6 +11,7 @@ import zmq
 import threading as thd
 import NodeFER
 import time
+import os
 
 import sys
 sys.path.append('Deployer/')
@@ -30,6 +31,8 @@ class Node:
         self.nodeS = NodeService.NodeService()
         self.pretext = pretext
         self.lock = thd.Lock()
+        self.rootAdr = os.getcwd()
+        self.dpl = Deployer.Deployer(os.path.join(self.rootAdr, 'ImagesBuild'), os.path.join(self.rootAdr, 'Base'))
         if self._boot():
             self.pr('[Boot completed]')
         else:
@@ -73,28 +76,41 @@ class Node:
         self.sub.start()
         
         self.pr('\tRequesting for initial AS')
-        iAS = self._req_AS_as()
-        if iAS is None:
-            self.pr('Server does not need scaling this node.')
-        else:
-            self.allocateTable(iAS['table'])
-            self._icIndex = iAS['icIndex']
-            
+        self._AS()
+        
         return True
     
     ######################################## Function Deployment
-    def __deploy_Function(self, req):
-        pass
+    def __downloadAndDeploy_Function(self, fname):
+        self.pr('Requesting clerk for function: {}'.format(fname))
+        ret = self._req_clerk_function(fname)
+        if ret is None:
+            self.pr('Error: Could not download the source of {} from the Clerk server'.format(fname))
+            return None
+        func = ret['func']
+        req = ret['req']
+        self.pr('Now deploying {}'.format(fname))
+        self.dpl.deployNewImage(func, req, fname)
+        self.pr('\tDone.')
+        return True
     
     ######################################## AS
     def allocateTable(self, table):
         with self.lock:
             self.nodeS.allocateTable(table)
-            self._imageNames = []
-            for imageName in table.keys():
-                self._imageNames.append( (imageName, table[imageName][0]) )
             self._createAgentThreads()
-                
+    
+    def _AS(self):
+        self.pr('Handling the auto-scaling event')
+        self.__AS_finThrds()
+        iAS = self._req_AS_as()
+        if iAS is None:
+            self.pr('Server does not need scaling this node.')
+            return None
+        self.__AS_check(iAS['table'])
+        self.allocateTable(iAS['table'])
+        self._icIndex = iAS['icIndex']
+        
     def __req_AS(self, req):
         context = zmq.Context()
         self.pr("\tConnecting to As server...")
@@ -111,16 +127,25 @@ class Node:
         socket.connect ("tcp://localhost:%s" % sPort)
         self.pr('Sub:Joint')
         while True:
-            ev = socket.recv()
+            ev = socket.recv_json()
             self.pr('Sub:Got {}'.format(ev))
-
-    
-    def __beforeAS(self):
-        self.pr('PreScale: Waiting for threads to finish')
+  
+    def __AS_finThrds(self):
+        self.pr('\t\tPreScale: Waiting for threads to finish')
+        self.__finishPoolAllAgents()
+        self.pr('\t\t\tPreScale: Done')
+        
+    def __AS_check(self, table):
+        self.pr('\t\tPreScale: Checking the list of functions')
         with self.lock:
-            self._finishAll = True
-        self.pr('PreScale: Done')
-    
+            self._imageNames = []
+            for imageName in table.keys():
+                self._imageNames.append( (imageName, table[imageName][0]) )
+        currentImages = self.dpl.getListOfAllImages()
+        for image in self._imageNames:
+            if not image[0] in currentImages:
+                self.__downloadAndDeploy_Function(image[0])
+
     def _req_AS_as(self):
         ret = self.__req_AS({'msg':'as?'})
         if ret['msg'] == 'as.':
@@ -136,35 +161,87 @@ class Node:
         for imageN in self._imageNames:
             image = imageN[0]
             N = imageN[1]
-            for _ in range(N):
-                thrd = thd.Thread(target=self._agentThread_Worker, args=(image,), daemon=True)
+            for i in range(N):
+                thrd = thd.Thread(target=self._agentThread_Worker, args=(image, i), daemon=False)
                 self._agentThreads.append(thrd)
                 thrd.start()
     
     def __finishPoolAllAgents(self):
         with self.lock:
             self._finishAll = True
-            while True:
-                for i in range(len(self._agentThreads)):
-                    th = self._agentThreads[i]
-                    if not th.isAlive():
-                        del self._agentsThread[i]
-                        break
-                if len(self._agentThreads) == 0:
+        while True:
+            for i in range(len(self._agentThreads)):
+                th = self._agentThreads[i]
+                if not th.isAlive():
+                    del self._agentsThread[i]
                     break
+            if len(self._agentThreads) == 0:
+                break
         self._finishAll = False
     
     def __poolForAvailableFEU_CPUFriendly(self, imageName):
         while True:
+            #self.lock.acquire()
             feu = self.nodeS.findAvailableFEU(imageName)
+            #self.lock.release()
             if feu is None:
                 time.sleep(0.001)
             else:
                 break
         return feu
     
-    def _agentThread_Worker(self, imageName):
-        self.pr('Agent@{}:Starting agent service'.format(imageName))
+    def _agentThread_Worker(self, imageName, ctr):
+        T = time.time()
+        self.pr('Agent@{}-{}${}:Starting agent service'.format(imageName, ctr, T))
+        portQ = self._portsTable[imageName][0]
+        portQP = self._portsTable[imageName][1]
+        contextQ = zmq.Context(2)
+        Q = contextQ.socket(zmq.REQ)
+        Q.connect("tcp://{}:{}".format(self._cIP, portQ))
+        contextQP = zmq.Context(2)
+        QP = contextQP.socket(zmq.PUSH)
+        QP.connect("tcp://{}:{}".format(self._cIP, portQP))
+        while True:
+            self.pr('Agent@{}-{}${}: Joining Q'.format(imageName, ctr, time.time() - T))
+            Q.send_string('?')
+            _fer = Q.recv_json()
+            if _fer['id'] != -1:
+                self.pr('Agent@{}-{}${}: Got a FER: {}'.format(imageName, ctr, time.time() - T, _fer))
+            else:
+                self.pr('Agent@{}-{}${}: No FERs'.format(imageName, ctr, time.time() - T))
+                time.sleep(0.5)
+                continue
+                
+            self.lock.acquire()
+            fer = NodeFER.NodeFER(_fer['id'], imageName, _fer['x'], _fer['m'])
+            self.lock.release()
+            
+            feu = self.__poolForAvailableFEU_CPUFriendly(imageName)
+            self.pr('Agent@{}-{}${}: Free feu={}'.format(imageName, ctr, time.time() - T, feu._name))
+                
+            self.lock.acquire()
+            retObj = self.nodeS.schedFERonFEU(fer, feu)
+            self.pr('Agent@{}-{}${}: Scheduled. Joining...'.format(imageName, ctr, time.time() - T, feu._name))
+            self.lock.release()
+            
+            ret = retObj.get()
+            self.pr('Agent@{}-{}${}: Got the result'.format(imageName, ctr, time.time() - T))
+            
+            #self.lock.acquire()
+            feu.check()
+            #self.lock.release()
+            
+            _ret = {'id':_fer['id'], 'r':ret}                
+            self.pr('Agent@{}-{}${}: Sending the result: {}'.format(imageName, ctr, time.time() - T, _ret))
+            QP.send_json(_ret)
+            self.pr('Agent@{}-{}${}: Sent.'.format(imageName, ctr, time.time() - T, _ret))
+            if self._finishAll:
+                break
+        self.pr('Agent@{}-{}${}: Finishing...'.format(imageName, ctr, time.time() - T))
+    
+    def _agentThread_Worker_pull(self, imageName, ctr):
+        T = time.time()
+        self.pr('Agent@{}-{}${}:Starting agent service'.format(imageName, ctr, T))
         portQ = self._portsTable[imageName][0]
         portQP = self._portsTable[imageName][1]
         contextQ = zmq.Context()
@@ -174,41 +251,45 @@ class Node:
         QP = contextQP.socket(zmq.PUSH)
         QP.connect("tcp://{}:{}".format(self._cIP, portQP))
         while True:
-            self.pr('Agent@{}: Joining Q'.format(imageName))
+            self.pr('Agent@{}-{}${}: Joining Q'.format(imageName, ctr, time.time() - T))
             _fer = Q.recv_json()
+            self.pr('Agent@{}-{}${}: Got a FER: {}'.format(imageName, ctr, time.time() - T, _fer))
+            continue
                 
             self.lock.acquire()
-            try:
-                self.pr('Agent@{}: Got a FER: {}'.format(imageName, _fer))
-                fer = NodeFER.NodeFER(_fer['id'], imageName, _fer['x'], _fer['m'])
-                
-                feu = self.__poolForAvailableFEU_CPUFriendly(imageName)
-                self.pr('Agent@{}: Free feu={}'.format(imageName, feu._name))
-                
-                retObj = self.nodeS.schedFERonFEU(fer, feu)
-            finally:
-                self.lock.release()
-            
-            self.pr('Agent@{}: Scheduled. Joining...'.format(imageName, feu._name))
-            ret = retObj.get()
-            
-            self.lock.acquire()
-            feu.check()
+            fer = NodeFER.NodeFER(_fer['id'], imageName, _fer['x'], _fer['m'])
             self.lock.release()
             
-            _ret = {'id':_fer['id'], 'r':ret}                
-            self.pr('Agent@{}: Sending the result: {}'.format(imageName, _ret))
-            QP.send_json(_ret)
+            feu = self.__poolForAvailableFEU_CPUFriendly(imageName)
+            self.pr('Agent@{}-{}${}: Free feu={}'.format(imageName, ctr, time.time() - T, feu._name))
                 
+            self.lock.acquire()
+            retObj = self.nodeS.schedFERonFEU(fer, feu)
+            self.pr('Agent@{}-{}${}: Scheduled. Joining...'.format(imageName, ctr, time.time() - T, feu._name))
+            self.lock.release()
+            
+            ret = retObj.get()
+            self.pr('Agent@{}-{}${}: Got the result'.format(imageName, ctr, time.time() - T))
+            
+            #self.lock.acquire()
+            feu.check()
+            #self.lock.release()
+            
+            _ret = {'id':_fer['id'], 'r':ret}                
+            self.pr('Agent@{}-{}${}: Sending the result: {}'.format(imageName, ctr, time.time() - T, _ret))
+            QP.send_json(_ret)
+            self.pr('Agent@{}-{}${}: Sent.'.format(imageName, ctr, time.time() - T, _ret))
             if self._finishAll:
                 break
-        self.pr('Agent@{}: Finishing...'.format(imageName))
+        self.pr('Agent@{}-{}${}: Finishing...'.format(imageName, ctr, time.time() - T))
                 
     ######################################## Clerk
     def _req_clerk_function(self, fname):
-        ret = self.__req_clerk({'msg':'function?', 'function':fname})
+        ret = self.__req_clerk({'msg':'function?', 'func':fname})
         if ret['msg'] != 'function.':
-            return None
+            return False
+        else:
+            return ret
     
     def _req_clerk_asPorts(self):
         ret = self.__req_clerk({'msg':'asPortsTable?'})
@@ -234,6 +315,7 @@ class Node:
         socket = context.socket(zmq.REQ)
         socket.connect("tcp://{}:{}".format(self._cIP, self._controllerClerkPort))
         socket.send_json(req)
+        self.pr("\t\tWaiting for response")
         resp = socket.recv_json()
         return resp
 

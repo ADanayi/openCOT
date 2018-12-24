@@ -11,9 +11,6 @@ import multiprocessing as mp
 import Gate
 import AutoScaler
 
-import sys
-sys.path.append('./../Node')
-
 def pp(txt):
     print(txt, end='')
     
@@ -21,11 +18,13 @@ def pr(txt):
     print('[{}]'.format(txt))
     
 class ControllerCore:
-    def __init__(self, sPort, clerkPort='4040', initPath=''):
+    def __init__(self, sPort, clerkPort='4040', initPath='', functionsPath = ''):
         print('Starting the Controller')
         
         self._port_clerk = clerkPort
         self._sPort = sPort
+        
+        self.path_to_functions = functionsPath
         
         pp('Loading initial configurations...')
         self._loadInits(initPath)
@@ -118,11 +117,14 @@ class ControllerCore:
     def _getPortsTable(self):
         return self._portsTable
     
-    
     ######################### Functions and Registery
     def __getFunc(self, fname):
-        
-    
+        with open('{}/{}/func.py'.format(self.path_to_functions, fname), 'r') as f:
+            FUNC = f.read()
+        with open('{}/{}/requirements.txt'.format(self.path_to_functions, fname), 'r') as r:
+            REQ = r.read()
+        ret = {'msg':'function.', 'func':FUNC, 'req':REQ}
+        return ret
     
     ######################### Clerk Server
     def _wrk_clerkServer(self):
@@ -144,26 +146,8 @@ class ControllerCore:
             ret = {'msg':'portsTable', 'portsTable':self._getPortsTable()}
         elif msg == 'asPortsTable?':
             ret = {'msg':'asPortsTable', 'sPort':self._sPort, 'asPortsTable':self._asPortsTable}
-        elif msg== 'getFunc':
+        elif msg== 'function?':
             ret = self.__getFunc(req['func'])
         else:
             ret = {'msg':'ERR'}
         return ret
-
-
-#%%
-if __name__ == '__main__':
-    cont = ControllerCore(4041, 4040)
-    
-#%%
-if __name__ == '__main__':
-    ctr = 0
-    while True:
-        fname = 'echofuncbusy'
-        x = input('Please enter the x: ')
-        m = {'User':'Abolfazl'}
-        
-        for i in range(10):
-            ctr += 1
-            fer = {'id':ctr, 'x':x, 'm':m}
-            cont.FER_push(fname, fer)

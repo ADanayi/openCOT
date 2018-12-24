@@ -1,2 +1,2 @@
-cluster1:1:echofuncbusy,2,0.2;
-cluster2:1:echofunc,3,0.1;
+cluster1:10:echo_pool,4,0.2;
+cluster2:1:hellocot,5,0.01;

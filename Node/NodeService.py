@@ -118,7 +118,7 @@ class NodeService:
         
     #########################% Node: cnt lifecycle functions
     def _newCnt(self, name, imageName, port, P=0.1, iport=2020): # Returns -1 on error, number of imageName FEUs otherwise
-        self.pr('Crated FEU instance of {} for port {}, named: {}'.format(imageName, port, name))
+        self.pr('Created FEU instance of {} for port {}, named: {}'.format(imageName, port, name))
         quota = int(P*self.cpu_period)
         cnt = self._client.containers.run(imageName, detach=True, ports={'{}/tcp'.format(iport):'{}'.format(port)}, cpu_shares=int(P*1024), name=name,
                                                                         cpu_period = self.cpu_period, cpu_quota = quota, 

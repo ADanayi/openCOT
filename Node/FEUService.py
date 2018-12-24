@@ -32,6 +32,7 @@ class FEUService:
     def isInvoked(self):
         if self._ret == None:
             return False
+        return True
 
     def check(self):
         self._ret = None
