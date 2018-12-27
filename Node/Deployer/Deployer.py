@@ -45,5 +45,6 @@ class Deployer:
             file.write(requirementsData)
         for file in os.listdir(self.basePath):
             src = os.path.join(self.basePath, file)
-            shutil.copy2(src, path)
+            if not os.path.isdir(src):
+                shutil.copy2(src, path)
         self.client.images.build(path=path, tag=fname)        
