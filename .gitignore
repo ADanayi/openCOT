@@ -5,3 +5,7 @@ FEU/invokerTest.py
 Controller/.fuse_*
 /Node/ImagesBuild/*
 
+*/*.pyc
+*/*/*.pyc
+*/*/*/*.pyc
+
