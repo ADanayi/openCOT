@@ -30,7 +30,7 @@ class DeployerBoard(QDialog):
         self.listWidget.clear()
         for item in self.list:
             self.listWidget.addItem(item)
-            
+                        
     def on_pushButton_removeAll_pressed(self):
         self.pr('Removing all images...')
         self.dpl.removeAllImages()

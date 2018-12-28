@@ -41,7 +41,13 @@ class Core:
         FER = cc.FER_depack(data)
         
         self.pr("EXEC::executing function")
-        ret = self.func(FER)
+        ret = {}
+        try:
+            _ret = self.func(FER)
+            ret = {'stat':'ok', 'val':_ret}
+        except:
+            ret = {'stat':'error'}
+            
         self.pr("EXEC::function retuned")
         if not isinstance(ret, dict):
             self.pr("EXEC::Warning. Returned value is not a dictionary")

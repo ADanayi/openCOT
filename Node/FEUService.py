@@ -41,7 +41,7 @@ class FEUService:
         if self.isInvoked():
             return None
         self._ret = self._pool.apply_async(self.__exe, (x, m))
-        return self._ret        
+        return self._ret
     
     def __exe(self, x, m):
         self.pr('EXE:requesting')

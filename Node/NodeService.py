@@ -21,7 +21,7 @@ class NodeService:
         self._client = docker.from_env()
         self._client.containers.prune()
         self.pretext = pretext
-        self.cpu_period = int(10000)
+        self.cpu_period = int(100000)
         
         self._FEUs = {}
     
@@ -33,7 +33,6 @@ class NodeService:
     def pr(self, txt):
         print("{}::{}".format(self.pretext, txt))
     
-    #########################% Node: Connection functions
     
     #########################% Node: Allocation and scaling functions
     def allocateTable(self, table, firstFlush=True, allContainers=True):

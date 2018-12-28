@@ -49,11 +49,11 @@ class ControllerCore:
         pr('done')
         
         pp('Initial scaling...')
-        self.autoScaler.setNewAutoScaling(self._initialASTable)
+        self.autoscale(self._initialASTable)
         pr('done')                 
         
     def _loadInits(self, path=''):
-        with open('init_clusters.oct', 'r') as file:
+        with open('{}/init_clusters.oct'.format(path), 'r') as file:
             lines = file.readlines()
         clustersInfo = {}
         for l in lines:
@@ -61,7 +61,7 @@ class ControllerCore:
             ls = ll.split(':')            
             if len(ls) > 2:
                 clustersInfo[ls[0]] = {'NodesNumer':int(ls[1]), 'ASPort':int(ls[2])}
-        with open('init_Ports.oct', 'r') as file:
+        with open('{}/init_Ports.oct'.format(path), 'r') as file:
             lines = file.readlines()
         self._portsTable = {}
         for l in lines:
@@ -76,7 +76,7 @@ class ControllerCore:
             
         self._clustersInfo = clustersInfo
         
-        with open('init_ASTable.oct', 'r') as file:
+        with open('{}/init_ASTable.oct'.format(path), 'r') as file:
             lines = file.readlines()
         self._initialASTable = {}
         for l in lines:
@@ -110,7 +110,7 @@ class ControllerCore:
     def FER_push(self, fname, fer):
         self.gates[fname].Q.put(fer)
         
-    def scale(self, asTableObj):
+    def autoscale(self, asTableObj):
         self.autoScaler.setNewAutoScaling(asTableObj)
     
     ######################### Ports Tables
