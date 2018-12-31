@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec 18 17:06:18 2018
-
-@author: root
-"""
-
 import zmq
 import multiprocessing as mp
 import Gate

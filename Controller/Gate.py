@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec 18 18:23:00 2018
-
-@author: root
-"""
-
 import zmq
 import multiprocessing as mp
 import threading as thd

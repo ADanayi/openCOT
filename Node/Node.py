@@ -129,6 +129,8 @@ class Node:
         while True:
             ev = socket.recv_json()
             self.pr('Sub:Got {}'.format(ev))
+            if ev['as'] == 'ev_newAs':
+                self._AS()
   
     def __AS_finThrds(self):
         self.pr('\t\tPreScale: Waiting for threads to finish')

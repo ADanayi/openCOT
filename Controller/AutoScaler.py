@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec 18 18:56:27 2018
-
-@author: root
-"""
-
 import zmq
 import threading as thd
 
@@ -16,9 +8,9 @@ class AutoScaler:
         
         self.lock = thd.Lock()
         
-        self.sContext = zmq.Context()        
-        self.sSocket = self.sContext.socket(zmq.PUB)
-        self.sSocket.bind("tcp://*:{}".format(signalsPort))
+        self.evContext = zmq.Context()        
+        self.evSocket = self.sContext.socket(zmq.PUB)
+        self.evSocket.bind("tcp://*:{}".format(signalsPort))
 
         self.asServers = {}
         for cluster in asPorts.keys():
@@ -69,8 +61,7 @@ class AutoScaler:
                     for _ in range(N):
                         self.asTableDS[cluster][icCtr] = table
                         icCtr += 1
-            
-            self.sSocket.send_json({'as':'ev_newAs'})
+            self.evSocket.send_json({'as':'ev_newAs'})
         
     def getNextInClusterWithPop(self, cluster):
         with self.lock:
