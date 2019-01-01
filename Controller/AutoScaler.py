@@ -9,7 +9,7 @@ class AutoScaler:
         self.lock = thd.Lock()
         
         self.evContext = zmq.Context()        
-        self.evSocket = self.sContext.socket(zmq.PUB)
+        self.evSocket = self.evContext.socket(zmq.PUB)
         self.evSocket.bind("tcp://*:{}".format(signalsPort))
 
         self.asServers = {}
