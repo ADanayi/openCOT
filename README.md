@@ -1,7 +1,8 @@
 # openCOT
 
 openCoT is a Cloud Infrastrcuture manager for FaaS clouds and is initially designed for IoT applications; Although it can be used in other cases too.
-
+The architecture behind this platform is well documentd in the following paper:
+https://arxiv.org/abs/1901.00302
 
 # Installation
 ## Controller
